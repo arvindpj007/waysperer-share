@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Waysperer — Shared trip</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --card: #171922;
+    --card-raised: #1e212c;
+    --card-high: #262a37;
+    --text: #f3f4f8;
+    --text-secondary: #b7bccb;
+    --text-muted: #7d8494;
+    --accent: #e8a35c;
+    --success: #6bd08f;
+    --transport: #6aa8ff;
+    --stay: #b98cff;
+    --activity: #e8a35c;
+    --dining: #ff8f6b;
+    --other: #9aa2b1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+    padding: 0 0 48px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+  .hero {
+    position: relative;
+    padding: 64px 20px 26px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(14,15,19,0.95)), #202432;
+    background-size: cover;
+    background-position: center;
+  }
+  .hero .wrap { padding: 0; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.85); font-weight: 700;
+  }
+  h1 { font-size: 30px; font-weight: 800; margin-top: 8px; letter-spacing: -0.01em; }
+  .chips { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: rgba(0,0,0,0.35); border-radius: 999px;
+    padding: 6px 12px; font-size: 12.5px; color: #fff;
+  }
+  .readonly-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 18px; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--success); }
+  .day { margin-top: 26px; }
+  .day-header {
+    font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text); font-weight: 700; margin-bottom: 12px;
+  }
+  .event {
+    display: flex; gap: 14px; padding: 14px;
+    background: var(--card-raised); border-radius: 16px; margin-bottom: 10px;
+  }
+  .event .rail { display: flex; flex-direction: column; align-items: center; padding-top: 2px; }
+  .swatch { width: 12px; height: 12px; border-radius: 999px; }
+  .event .body { flex: 1; min-width: 0; }
+  .event .title { font-size: 15px; font-weight: 700; }
+  .event .meta { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; }
+  .event .time { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+  .event .top { display: flex; justify-content: space-between; gap: 10px; }
+  .type-label {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 700; margin-top: 6px; display: inline-block;
+  }
+  .state {
+    max-width: 420px; margin: 90px auto; text-align: center; padding: 0 24px;
+  }
+  .state .badge {
+    width: 64px; height: 64px; border-radius: 999px; margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card-high); font-size: 28px;
+  }
+  .state h2 { font-size: 20px; font-weight: 800; }
+  .state p { color: var(--text-secondary); font-size: 14px; margin-top: 10px; }
+  .openapp {
+    display: inline-block; margin-top: 22px; padding: 12px 22px;
+    background: var(--accent); color: #201502; border-radius: 999px;
+    font-weight: 800; font-size: 14px; text-decoration: none;
+  }
+  .footer {
+    text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 40px;
+  }
+  .footer a { color: var(--text-secondary); }
+  .spinner {
+    width: 30px; height: 30px; border-radius: 999px;
+    border: 3px solid var(--card-high); border-top-color: var(--accent);
+    margin: 90px auto; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="spinner" aria-label="Loading"></div>
+</div>
+
+<script>
+  // Client-safe config: the publishable (anon) key + project URL — the same
+  // values the app ships. The shared_trip RPC is SECURITY DEFINER, granted to
+  // anon, and returns only read-only itinerary fields (no booking details).
+  const SUPABASE_URL = "https://nvehrhizcjncqbssixsx.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_b2oYkF64ZHt7THWb8-Mczg_XZCwcktS";
+
+  const TYPE_COLORS = {
+    transport: "var(--transport)", stay: "var(--stay)",
+    activity: "var(--activity)", dining: "var(--dining)", other: "var(--other)",
+  };
+  const TYPE_LABELS = {
+    transport: "Transport", stay: "Stay",
+    activity: "Activity", dining: "Dining", other: "Other",
+  };
+
+  const el = (html) => {
+    const t = document.createElement("template");
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  };
+  const esc = (s) =>
+    String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const app = document.getElementById("app");
+
+  function showState(emoji, title, body) {
+    app.innerHTML =
+      `<div class="state"><div class="badge">${emoji}</div>` +
+      `<h2>${esc(title)}</h2><p>${esc(body)}</p></div>`;
+  }
+
+  function fmtDayHeader(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, {
+      weekday: "short", month: "short", day: "numeric",
+    });
+  }
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function fmtRange(start, end) {
+    if (!start) return "Dates TBD";
+    const opts = { month: "short", day: "numeric" };
+    const s = new Date(start).toLocaleDateString(undefined, opts);
+    if (!end) return s;
+    const e = new Date(end).toLocaleDateString(undefined, opts);
+    return `${s} – ${e}`;
+  }
+
+  function render(token, data) {
+    const trip = data.trip || {};
+    const events = Array.isArray(data.events) ? data.events : [];
+
+    const hero = el(`<div class="hero"><div class="wrap"></div></div>`);
+    if (trip.cover_photo && /^https?:\/\//.test(trip.cover_photo)) {
+      hero.style.backgroundImage =
+        `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(14,15,19,0.95)), url("${esc(trip.cover_photo)}")`;
+    }
+    const dest = [trip.destination, trip.country].filter(Boolean).join(", ");
+    const heroInner = hero.firstElementChild;
+    heroInner.appendChild(el(
+      `<div class="eyebrow">${esc([dest, fmtRange(trip.start_date, trip.end_date)]
+        .filter(Boolean).join(" · "))}</div>`));
+    heroInner.appendChild(el(`<h1>${esc(trip.name || "Shared trip")}</h1>`));
+    const chips = el(`<div class="chips"></div>`);
+    chips.appendChild(el(`<span class="chip">${events.length} events</span>`));
+    const days = new Set(events.map((e) => (e.start_dt || "").slice(0, 10)).filter(Boolean));
+    if (days.size) chips.appendChild(el(`<span class="chip">${days.size} days planned</span>`));
+    heroInner.appendChild(chips);
+    heroInner.appendChild(el(
+      `<div class="readonly-tag"><span class="dot"></span>Read-only itinerary</div>`));
+
+    const body = el(`<div class="wrap"></div>`);
+
+    // Group events by day, ordered (the RPC already sorts by start_dt).
+    const byDay = new Map();
+    for (const e of events) {
+      const key = (e.start_dt || "").slice(0, 10);
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key).push(e);
+    }
+    if (!events.length) {
+      body.appendChild(el(
+        `<div class="state" style="margin:60px auto;"><p>No events on this itinerary yet.</p></div>`));
+    }
+    for (const [dayKey, evs] of byDay) {
+      const day = el(`<div class="day"></div>`);
+      day.appendChild(el(`<div class="day-header">${esc(fmtDayHeader(dayKey))}</div>`));
+      for (const e of evs) {
+        const color = TYPE_COLORS[e.type] || TYPE_COLORS.other;
+        const label = TYPE_LABELS[e.type] || "Event";
+        const meta = [e.location].filter(Boolean).map(esc).join(" · ");
+        day.appendChild(el(
+          `<div class="event">
+             <div class="rail"><span class="swatch" style="background:${color}"></span></div>
+             <div class="body">
+               <div class="top">
+                 <div class="title">${esc(e.title || "Untitled")}</div>
+                 <div class="time">${esc(fmtTime(e.start_dt))}</div>
+               </div>
+               ${meta ? `<div class="meta">${meta}</div>` : ""}
+               <div class="type-label" style="color:${color}">${esc(label)}</div>
+             </div>
+           </div>`));
+      }
+      body.appendChild(day);
+    }
+
+    body.appendChild(el(
+      `<div class="footer">
+         Shared from <strong>Waysperer</strong> ·
+         <a href="waysperer://shared/${esc(token)}">Open in the app</a>
+       </div>`));
+
+    app.innerHTML = "";
+    app.appendChild(hero);
+    app.appendChild(body);
+    document.title = `${trip.name || "Shared trip"} — Waysperer`;
+  }
+
+  async function main() {
+    const token = (location.hash || "").replace(/^#/, "").trim();
+    if (!token || !/^[A-Za-z0-9]+$/.test(token)) {
+      showState("🧭", "No trip link",
+        "This page opens a shared Waysperer itinerary. Ask the trip owner for a share link.");
+      return;
+    }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/shared_trip`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ share_token: token }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data || !data.trip) {
+        showState("🔗", "This link has expired",
+          "The trip owner turned sharing off, or replaced this link with a new one. Ask them for an updated link.");
+        return;
+      }
+      render(token, data);
+    } catch (err) {
+      showState("⚠️", "Couldn't open this trip",
+        "Something went wrong loading the itinerary. Check your connection and try again.");
+    }
+  }
+
+  window.addEventListener("hashchange", main);
+  main();
+</script>
+</body>
+</html>
