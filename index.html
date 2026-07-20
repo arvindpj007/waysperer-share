@@ -31,9 +31,16 @@
     padding: 0 0 48px;
   }
   .wrap { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+  .brandbar {
+    display: flex; align-items: center; gap: 10px;
+    max-width: 640px; margin: 0 auto; padding: 16px 20px 2px;
+  }
+  .brandbar .mark { color: var(--accent); width: 30px; height: 23px; display: inline-flex; }
+  .brandbar .mark svg { width: 100%; height: 100%; }
+  .brandbar .wordmark { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
   .hero {
     position: relative;
-    padding: 64px 20px 26px;
+    padding: 26px 20px 26px;
     background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(14,15,19,0.95)), #202432;
     background-size: cover;
     background-position: center;
@@ -103,6 +110,10 @@
 </style>
 </head>
 <body>
+<div class="brandbar">
+  <span class="mark" aria-hidden="true"><svg viewBox="0 0 26 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 4 C3.2 13 4.4 15.5 6 12 C7.6 8.5 8.4 8.5 10 12 C11.6 15.5 12.4 15.5 14 12 C15.4 8.9 16.2 8.2 18.4 8.8 L23 10.2 M19.6 6.6 L23 10.2 L18.4 11.6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  <span class="wordmark">Waysperer</span>
+</div>
 <div id="app">
   <div class="spinner" aria-label="Loading"></div>
 </div>
